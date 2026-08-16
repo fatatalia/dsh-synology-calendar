@@ -1,0 +1,5 @@
+# dsh-synology-calendar bundle patch
+# 插入 host 插件行：注册 8 个日历工具 + calendar settings namespace + 配置 remote。
+- insert:
+    - id: dsh-synology-calendar
+      name: dsh-synology-calendar
