@@ -163,7 +163,13 @@ function fmtEvent(event) {
 
 export function apply(ctx, config) {
   const Logger = ctx.logger;
-  const ts = () => new Date().toISOString();
+  // 本地时间戳（时区跟随系统，如 Asia/Shanghai +08）。曾用 toISOString() 输出 UTC，
+  // 本地 16:xx 显示 08:xxZ 造成误解。
+  const ts = () => {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  };
   const log = {
     info: (m) => { console.log(`[${ts()}] [cal] ${m}`); try { Logger?.info?.(m); } catch {} },
     warn: (m) => { console.warn(`[${ts()}] [cal:warn] ${m}`); try { Logger?.warn?.(m); } catch {} },
