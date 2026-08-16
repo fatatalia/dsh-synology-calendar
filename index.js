@@ -163,10 +163,11 @@ function fmtEvent(event) {
 
 export function apply(ctx, config) {
   const Logger = ctx.logger;
+  const ts = () => new Date().toISOString();
   const log = {
-    info: (m) => { console.log(`[cal] ${m}`); try { Logger?.info?.(m); } catch {} },
-    warn: (m) => { console.warn(`[cal:warn] ${m}`); try { Logger?.warn?.(m); } catch {} },
-    error: (m) => { console.error(`[cal:err] ${m}`); try { Logger?.error?.(m); } catch {} },
+    info: (m) => { console.log(`[${ts()}] [cal] ${m}`); try { Logger?.info?.(m); } catch {} },
+    warn: (m) => { console.warn(`[${ts()}] [cal:warn] ${m}`); try { Logger?.warn?.(m); } catch {} },
+    error: (m) => { console.error(`[${ts()}] [cal:err] ${m}`); try { Logger?.error?.(m); } catch {} },
   };
 
   const scope = ctx.settings.register("calendar", CalendarSchema, {
