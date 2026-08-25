@@ -223,7 +223,7 @@ export function apply(ctx, config) {
           endDate.setHours(23, 59, 59, 999);
         }
         if (!args.calendar) {
-          const calendars = await c.getAllCalendars();
+          const calendars = await c.getAllCalendars("event");
           if (calendars.length === 0) return "未发现任何日历。";
           const groups = [];
           let total = 0;
@@ -238,7 +238,7 @@ export function apply(ctx, config) {
           if (total === 0) return `没有找到 ${args.start_date} 到 ${args.end_date || args.start_date} 之间的日程事件。`;
           return [`找到 ${total} 个事件（全部日历）：`, "", ...groups].join("\n");
         }
-        const calendarPath = await c.getCalendarPath(args.calendar);
+        const calendarPath = await c.getCalendarPath(args.calendar, "event");
         const events = await c.queryEvents({ startDate, endDate, calendarPath });
         if (events.length === 0) return `没有找到 ${args.start_date} 到 ${args.end_date || args.start_date} 之间的日程事件。`;
         const lines = [`找到 ${events.length} 个事件：`, ""];
@@ -263,7 +263,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calendarPath = await c.getCalendarPath(args.calendar || "home");
+        const calendarPath = await c.getCalendarPath(args.calendar || "home", "event");
         const uid = await c.createEvent(calendarPath, {
           title: args.title,
           startTime: new Date(args.start_time),
@@ -292,7 +292,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calendarPath = await c.getCalendarPath(args.calendar || "home");
+        const calendarPath = await c.getCalendarPath(args.calendar || "home", "event");
         const updateParams = {};
         if (args.title !== undefined) updateParams.title = args.title;
         if (args.start_time !== undefined) updateParams.startTime = new Date(args.start_time);
@@ -316,7 +316,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calendarPath = await c.getCalendarPath(args.calendar || "home");
+        const calendarPath = await c.getCalendarPath(args.calendar || "home", "event");
         await c.deleteEvent(calendarPath, args.uid);
         return `事件已删除 ✅ (UID: ${args.uid})`;
       },
@@ -336,7 +336,7 @@ export function apply(ctx, config) {
         const c = await client();
         const filterStatus = args.status?.toUpperCase();
         if (!args.calendar) {
-          const calendars = await c.getAllCalendars();
+          const calendars = await c.getAllCalendars("todo");
           if (calendars.length === 0) return "未发现任何日历。";
           const groups = [];
           let total = 0;
@@ -357,7 +357,7 @@ export function apply(ctx, config) {
           if (total === 0) return filterStatus ? `没有 ${filterStatus} 状态的任务。` : "没有任务。";
           return [`找到 ${total} 个任务（全部日历）：`, "", ...groups].join("\n");
         }
-        const calPath = await c.getCalendarPath(args.calendar);
+        const calPath = await c.getCalendarPath(args.calendar, "todo");
         if (!calPath) return "日历未发现: " + args.calendar;
         const todos = await c.queryTodos(calPath);
         if (filterStatus) {
@@ -398,7 +398,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calPath = await c.getCalendarPath(args.calendar || "inbox");
+        const calPath = await c.getCalendarPath(args.calendar || "inbox", "todo");
         if (!calPath) return "日历未发现: " + (args.calendar || "inbox");
         const uid = await c.createTodo(calPath, {
           summary: args.summary,
@@ -424,7 +424,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calPath = await c.getCalendarPath(args.calendar || "inbox");
+        const calPath = await c.getCalendarPath(args.calendar || "inbox", "todo");
         if (!calPath) return "日历未发现: " + (args.calendar || "inbox");
         const updateParams = {};
         if (args.summary !== undefined) updateParams.summary = args.summary;
@@ -449,7 +449,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calPath = await c.getCalendarPath(args.calendar || "inbox");
+        const calPath = await c.getCalendarPath(args.calendar || "inbox", "todo");
         if (!calPath) return "日历未发现: " + (args.calendar || "inbox");
         await c.completeTodo(calPath, args.uid);
         return `任务已完成 ✅ (UID: ${args.uid})`;
@@ -468,7 +468,7 @@ export function apply(ctx, config) {
       },
       async execute(args) {
         const c = await client();
-        const calPath = await c.getCalendarPath(args.calendar || "inbox");
+        const calPath = await c.getCalendarPath(args.calendar || "inbox", "todo");
         if (!calPath) return "日历未发现: " + (args.calendar || "inbox");
         await c.deleteTodo(calPath, args.uid);
         return `任务已删除 ✅ (UID: ${args.uid})`;
