@@ -2,6 +2,13 @@
 
 Synology Calendar（CalDAV）接入 dsh：`calendar_*` / `todo_*` 共 9 个工具（查询、创建、更新、删除日程与待办），随 dsh web 启停，零 dsh 框架改动。
 
+## dsh 版本兼容性
+
+**要求 dsh ≥ 0.1.7-rc.1**（已在 0.1.7-rc.1 实测通过）。
+
+- **`ctx.settings.register()` 已移除**（2026-09-24）：原 `calendar` settings namespace 并入插件 `Config`，可热改字段标 `.volatile()`；`inject` 去掉 `settings`。
+- **Typert strict codec 必须带 `create()` 工厂**（0.1.7 客户端校验）。
+
 ## 功能
 
 - **CalDAV 客户端**（`lib/caldav.mjs`）：PROPFIND / REPORT / PUT / DELETE / GET + iCal 解析/构建，零框架依赖（仅全局 `fetch` / `crypto` / `Buffer`）

@@ -16,17 +16,18 @@ import { CalDavClient } from "./lib/caldav.mjs";
 
 export const name = "dsh-synology-calendar";
 
-export const inject = ["typert", "settings", "tools", "credentials"];
+export const inject = ["typert", "tools", "credentials"];
 
+// 2026-09-24 适配 dsh 0.1.7：ctx.settings.register() 已移除，原 `calendar`
+// settings namespace 并入插件 Config；.volatile() 字段可在设置页热改。
 export const Config = z.object({
   settingsPath: z.string().default(join(homedir(), ".dsh", "settings.yaml")),
-});
-
-/** `calendar` settings namespace。 */
-const CalendarSchema = z.object({
-  url: z.string(),
-  username: z.string(),
-  calendars: z.dict(z.string()),
+  /** CalDAV 服务地址。 */
+  url: z.string().default("").volatile(),
+  /** CalDAV 用户名（密码走 credential ref CALDAV_PASSWORD）。 */
+  username: z.string().default("").volatile(),
+  /** 日历名映射表。 */
+  calendars: z.dict(z.string()).default({}).volatile(),
 });
 
 /** 密码 credential ref（存 .credentials.yaml）。 */
@@ -34,7 +35,9 @@ const PASSWORD_REF = "CALDAV_PASSWORD";
 
 // ── Typert wire schemas（宽松 parse） ───────────────────────────────────────
 function parseObj() {
-  return { parse(value) { if (typeof value !== "object" || value === null) throw new Error("expected object"); return value; } };
+  // 0.1.7：typert strict codec 必须有 create() 工厂（gateway 走 codec.create().parse(v)）。
+  const parse = (value) => { if (typeof value !== "object" || value === null) throw new Error("expected object"); return value; };
+  return { parse, create: () => ({ parse }) };
 }
 const getResultSchema = parseObj();
 const setPayloadSchema = parseObj();
@@ -52,7 +55,7 @@ const MANIFEST = {
       method: "getConfig",
       invocation: { kind: "direct" },
       parameters: [],
-      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#CalendarConfig", schema: getResultSchema },
+      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#CalendarConfig", schema: getResultSchema, create: () => getResultSchema },
     },
     {
       id: "dsh-synology-calendar#calendar/setConfig",
@@ -61,9 +64,9 @@ const MANIFEST = {
       method: "setConfig",
       invocation: { kind: "direct" },
       parameters: [
-        { name: "payload", wire: "payload", source: "json", codec: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetPayload", schema: setPayloadSchema } },
+        { name: "payload", wire: "payload", source: "json", codec: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetPayload", schema: setPayloadSchema, create: () => setPayloadSchema } },
       ],
-      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetResult", schema: setResultSchema },
+      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetResult", schema: setResultSchema, create: () => setResultSchema },
     },
     {
       id: "dsh-synology-calendar#calendar/setPassword",
@@ -72,9 +75,9 @@ const MANIFEST = {
       method: "setPassword",
       invocation: { kind: "direct" },
       parameters: [
-        { name: "payload", wire: "payload", source: "json", codec: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetPasswordPayload", schema: setPayloadSchema } },
+        { name: "payload", wire: "payload", source: "json", codec: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetPasswordPayload", schema: setPayloadSchema, create: () => setPayloadSchema } },
       ],
-      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetResult", schema: setResultSchema },
+      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#SetResult", schema: setResultSchema, create: () => setResultSchema },
     },
     {
       id: "dsh-synology-calendar#calendar/passwordState",
@@ -83,7 +86,7 @@ const MANIFEST = {
       method: "passwordState",
       invocation: { kind: "direct" },
       parameters: [],
-      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#PasswordState", schema: getResultSchema },
+      result: { mode: "strict", typeSymbol: "dsh-synology-calendar#PasswordState", schema: getResultSchema, create: () => getResultSchema },
     },
   ],
   model: { services: [], events: [], objects: [] },
@@ -176,9 +179,23 @@ export function apply(ctx, config) {
     error: (m) => { console.error(`[${ts()}] [cal:err] ${m}`); try { Logger?.error?.(m); } catch {} },
   };
 
-  const scope = ctx.settings.register("calendar", CalendarSchema, {
-    base: { url: "", username: "", calendars: {} },
-  });
+  // 0.1.7：配置即插件 Config 的 volatile 字段，这里适配出等价的 scope 外壳。
+  const scope = {
+    get: () => ({
+      url: config.url.get(),
+      username: config.username.get(),
+      calendars: config.calendars.get(),
+    }),
+    async update(patch) {
+      const editor = ctx.get("configEditor");
+      const entry = ctx.fiber?.entry;
+      if (!editor || entry === undefined) return;
+      await editor.edit(entry, (current) => ({ ...current, ...patch }));
+    },
+    watch(cb) {
+      ctx.on("loader/volatile-update", () => { cb(scope.get()); });
+    },
+  };
   const service = new CalendarService(ctx, scope);
   ctx.effect(() => ctx.typert.register(MANIFEST), "dsh-synology-calendar: typert manifest");
 
