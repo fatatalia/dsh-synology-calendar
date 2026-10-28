@@ -274,6 +274,7 @@ export function apply(ctx, config) {
         description: { type: "string", description: "日程描述或备注" },
         location: { type: "string", description: "日程地点" },
         alarm_minutes: { type: "number", description: "提前多少分钟提醒，默认 15；传 0 = 该事件不提醒" },
+        alarm_minutes_list: { type: "array", items: { type: "number" }, description: "多个提醒（分钟），如 [720, 60] = 提前12小时 + 提前1小时。优先于 alarm_minutes" },
       },
       output: {
         schema: { type: "string" },
@@ -288,7 +289,7 @@ export function apply(ctx, config) {
           endTime: new Date(args.end_time),
           description: args.description,
           location: args.location,
-          alarmMinutes: args.alarm_minutes,
+          alarmMinutes: args.alarm_minutes_list ?? args.alarm_minutes,
         });
         return `事件创建成功 ✅\n标题: ${args.title}\nUID: ${uid}\n时间: ${args.start_time} → ${args.end_time}${args.location ? `\n地点: ${args.location}` : ""}`;
       },
@@ -304,6 +305,7 @@ export function apply(ctx, config) {
         description: { type: "string", description: "新描述" },
         location: { type: "string", description: "新地点" },
         alarm_minutes: { type: "number", description: "提前多少分钟提醒，默认 15；传 0 = 不提醒" },
+        alarm_minutes_list: { type: "array", items: { type: "number" }, description: "多个提醒（分钟），如 [720, 60]。优先于 alarm_minutes" },
         calendar: { type: "string", description: "日历名：home / work / personal" },
       },
       output: {
@@ -319,7 +321,8 @@ export function apply(ctx, config) {
         if (args.end_time !== undefined) updateParams.endTime = new Date(args.end_time);
         if (args.description !== undefined) updateParams.description = args.description;
         if (args.location !== undefined) updateParams.location = args.location;
-        if (args.alarm_minutes !== undefined) updateParams.alarmMinutes = args.alarm_minutes;
+        if (args.alarm_minutes_list !== undefined) updateParams.alarmMinutes = args.alarm_minutes_list;
+        else if (args.alarm_minutes !== undefined) updateParams.alarmMinutes = args.alarm_minutes;
         const result = await c.updateEvent(calendarPath, args.uid, updateParams);
         return `事件更新成功 ✅\n标题: ${result.summary}\nUID: ${result.uid}`;
       },
